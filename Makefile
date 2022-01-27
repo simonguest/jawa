@@ -1,7 +1,3 @@
-create-base:
-	qemu-img create image/base.img 256M
-	sfdisk image/base.img < image/partition.txt
-
 create-fs:
 	docker build image/. -t jawa/fs:latest
 	docker export -o image/fs.tar `docker run -d jawa/fs:latest`

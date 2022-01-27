@@ -1,7 +1,9 @@
 # Create a partitioned base image - not sure why this doesn't work in container
-# qemu-img create src/jawa.img 256M
-# sfdisk src/jawa.img < src/partition.txt
-cp image/base.img image/output/jawa.img
+qemu-img create image/output/jawa.img 256M
+parted -s image/output/jawa.img \
+    'mklabel msdos' \
+    'mkpart primary ext4 2048s 100%' \
+    'set 1 boot on'
 
 # Format the partition with ext4
 losetup -D
