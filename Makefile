@@ -1,3 +1,11 @@
+config-kernel:
+	docker build kernel/. -t jawa/kernel:latest
+	docker run -ti -v `pwd`/kernel:/source:rw jawa/kernel:latest sh /menuconfig.sh
+
+build-kernel:
+	docker build kernel/. -t jawa/kernel:latest
+	docker run -ti -v `pwd`/kernel:/source:rw jawa/kernel:latest sh /build.sh
+
 create-fs:
 	docker build image/. -t jawa/fs:latest
 	docker export -o image/fs.tar `docker run -d jawa/fs:latest`

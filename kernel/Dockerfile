@@ -1,13 +1,19 @@
-FROM i386/debian:11.2
-RUN apt update
-RUN apt install -y curl xz-utils git fakeroot build-essential ncurses-dev libssl-dev bc flex libelf-dev bison
-#RUN apk update
-#RUN apk add curl git fakeroot ncurses-dev flex bison
-RUN curl -O https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.16.4.tar.xz
-RUN tar -xvf linux-5.16.4.tar.xz
-RUN cd linux-5.16.4
-RUN make tinyconfig
-RUN make -j16
+FROM i386/alpine:3.15
+RUN apk update
+RUN apk add alpine-sdk sudo ncurses-dev flex bison
+RUN git clone -b v3.15.0 --single-branch https://gitlab.alpinelinux.org/alpine/aports
+RUN mkdir -p /var/cache/distfiles
+COPY ./menuconfig.sh /menuconfig.sh
+COPY ./build.sh /build.sh
+
+#RUN cd /aports/main/linux-lts
+
+#RUN abuild-keygen -a -i -n
+
+# TODO: Copy the .config and overwrite the config-virt.x86 file
+#RUN abuild checksum
+
+#RUN abuild -FrK
 
 
 
