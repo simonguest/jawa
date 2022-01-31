@@ -2,9 +2,15 @@ FROM i386/alpine:3.15
 RUN apk update
 RUN apk add openrc 
 RUN apk add mkinitfs
-#RUN apk add linux-virt
-COPY ./packages.tar .
+
+# Install JDK
+RUN apk add openjdk8
+RUN rm /usr/bin/javac && \
+    ln -s /usr/lib/jvm/java-1.8-openjdk/bin/javac /usr/bin/javac
+
+# Install kernel
 COPY ./abuild.tar .
+COPY ./packages.tar .
 RUN tar xvf /packages.tar
 RUN tar xvf /abuild.tar
 RUN cp /.abuild/*.pub /etc/apk/keys
@@ -55,4 +61,4 @@ RUN rm /abuild.tar
 #     ln -sfn /usr/lib/jvm/java-17-amazon-corretto /usr/lib/jvm/default-jvm
 
 
-#COPY ./HelloWorld.java /root/HelloWorld.java
+COPY ./HelloWorld.java /root/HelloWorld.java
