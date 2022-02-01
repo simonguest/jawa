@@ -1,64 +1,35 @@
 FROM i386/alpine:3.15
-RUN apk update
-RUN apk add openrc 
-RUN apk add mkinitfs
+RUN apk update && \
+    apk add openrc mkinitfs
 
-# Install JDK
-RUN apk add openjdk8
-RUN rm /usr/bin/javac && \
-    ln -s /usr/lib/jvm/java-1.8-openjdk/bin/javac /usr/bin/javac
+# Install JDK8
+RUN apk add --no-cache openjdk8 && \
+    rm /usr/bin/javac && \
+    ln -s /usr/lib/jvm/java-1.8-openjdk/bin/javac /usr/bin/javac && \
+    rm -rf /usr/share/fonts
 
-# Install kernel
+# Install custom kernel
 COPY ./abuild.tar .
 COPY ./packages.tar .
-RUN tar xvf /packages.tar
-RUN tar xvf /abuild.tar
-RUN cp /.abuild/*.pub /etc/apk/keys
-RUN echo "/packages/main" > /etc/apk/repositories
-RUN apk update
-RUN apk add linux-virt
-RUN echo "root:root" | chpasswd
+RUN tar xvf /packages.tar && \
+    tar xvf /abuild.tar && \
+    cp /.abuild/*.pub /etc/apk/keys && \
+    echo "/packages/main" > /etc/apk/repositories && \
+    apk update && \
+    apk add linux-virt && \
+    echo "root:root" | chpasswd
 
-# Clean up
-RUN rm -rf /packages
-RUN rm /packages.tar
-RUN rm /abuild.tar
+# Clean up packages
+RUN rm -rf /packages && \
+    rm /packages.tar && \
+    rm /abuild.tar
 
-#RUN apk add openjdk8
-#RUN rm /usr/bin/javac && \
-#    ln -s /usr/lib/jvm/java-1.8-openjdk/bin/javac /usr/bin/javac
-
-# COPY ./amazon-corretto-11.0.14.9.1-linux-x86 /tmp
-# RUN mkdir /root/jdk && \
-#     tar -xvf /tmp/amazon-corretto-11-x86-linux-jdk.tar.gz -C /root/jdk --strip-components=1 && \
-#     rm /tmp/amazon-corretto-11-x86-linux-jdk.tar.gz
-# RUN ln -s /root/jdk/bin/javac /usr/bin/javac
-
-# RUN wget -O /etc/apk/keys/amazoncorretto.rsa.pub https://apk.corretto.aws/amazoncorretto.rsa.pub
-# RUN echo "https://apk.corretto.aws/" >> /etc/apk/repositories
-# RUN apk update
-# RUN apk add amazon-corretto-11
-
-# ARG version=17.0.0.35.1
-# Please note that the THIRD-PARTY-LICENSE could be out of date if the base image has been updated recently. 
-# The Corretto team will update this file but you may see a few days' delay.
-#
-# Slim:
-#   JLink is used (retaining all modules) to create a slimmer version of the JDK excluding man-pages, header files and debugging symbols - saving ~113MB.
-# RUN wget -O /THIRD-PARTY-LICENSES-20200824.tar.gz https://corretto.aws/downloads/resources/licenses/alpine/THIRD-PARTY-LICENSES-20200824.tar.gz && \
-#     echo "82f3e50e71b2aee21321b2b33de372feed5befad6ef2196ddec92311bc09becb  /THIRD-PARTY-LICENSES-20200824.tar.gz" | sha256sum -c - && \
-#     tar x -ovzf THIRD-PARTY-LICENSES-20200824.tar.gz && \
-#     rm -rf THIRD-PARTY-LICENSES-20200824.tar.gz && \
-#     wget -O /etc/apk/keys/amazoncorretto.rsa.pub https://apk.corretto.aws/amazoncorretto.rsa.pub && \
-#     SHA_SUM="6cfdf08be09f32ca298e2d5bd4a359ee2b275765c09b56d514624bf831eafb91" && \
-#     echo "${SHA_SUM}  /etc/apk/keys/amazoncorretto.rsa.pub" | sha256sum -c - && \
-#     echo "https://apk.corretto.aws" >> /etc/apk/repositories && \
-#     apk add --no-cache amazon-corretto-17=$version-r0 binutils && \
-#     /usr/lib/jvm/default-jvm/bin/jlink --add-modules "$(java --list-modules | sed -e 's/@[0-9].*$/,/' | tr -d \\n)" --no-man-pages --no-header-files --strip-debug --output /opt/corretto-slim && \
-#     apk del binutils amazon-corretto-17 && \
-#     mkdir -p /usr/lib/jvm/ && \
-#     mv /opt/corretto-slim /usr/lib/jvm/java-17-amazon-corretto && \
-#     ln -sfn /usr/lib/jvm/java-17-amazon-corretto /usr/lib/jvm/default-jvm
+# Clean up other areas of the distro
+# RUN rm -rf /usr/share/fonts
 
 
-COPY ./HelloWorld.java /root/HelloWorld.java
+# Clean up unused parts of the JRE to save space
+# RUN rm /usr/lib/jvm/java-1.8-openjdk/jre/lib/ext/nashorn.jar
+
+
+COPY ./*.java /root/

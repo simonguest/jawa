@@ -1,5 +1,5 @@
 # Create a partitioned base image - not sure why this doesn't work in container
-qemu-img create image/output/jawa.img 512M
+qemu-img create image/output/jawa.img 256M
 parted -s image/output/jawa.img \
     'mklabel msdos' \
     'mkpart primary ext4 2048s 100%' \
