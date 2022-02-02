@@ -19,6 +19,9 @@ mkdir -p /mnt/image
 mount -t auto ${LOOPDEVICE} /mnt/image
 cp -R /tmp/fs/. /mnt/image
 
+# Setup networking
+cp /image/interfaces /mnt/image/etc/network/
+
 # Setup extlinux and write syslinux MBR
 extlinux --install /mnt/image/boot
 cp /image/syslinux.cfg /mnt/image/boot/.

@@ -18,7 +18,7 @@ RUN tar xvf /packages.tar && \
     apk update && \
     apk add linux-virt && \
     echo "root:root" | chpasswd
-
+ 
 # Clean up packages
 RUN rm -rf /packages && \
     rm /packages.tar && \
@@ -31,5 +31,6 @@ RUN rm -rf /packages && \
 # Clean up unused parts of the JRE to save space
 # RUN rm /usr/lib/jvm/java-1.8-openjdk/jre/lib/ext/nashorn.jar
 
-
-COPY ./*.java /root/
+# Copy the JDK nailgun compiler
+RUN mkdir /root/compiler
+COPY ./RuntimeCompiler/* /root/compiler/
