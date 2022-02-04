@@ -27,6 +27,32 @@ RUN rm -rf /packages && \
 # Clean up other areas of the distro
 # RUN rm -rf /usr/share/fonts
 
+# Remount root as rw on boot
+COPY ./remount /usr/bin/remount
+RUN chmod +x /usr/bin/remount
+
+# Copy init.d scripts
+COPY ./init.d/* /etc/init.d/
+RUN chmod +x /etc/init.d/remount
+
+# Setup services
+RUN rc-update add remount default
+
+
+# Enable/disable services to default runlevel
+RUN rc-update add networking default
+#TODO
+
+# Set hostname
+RUN echo "wasm" > /etc/hostname
+
+# Remove motd and issue
+RUN rm /etc/motd && rm /etc/issue
+
+# Enable Getty on ttys0 for webpage interaction
+#TODO
+
+
 
 # Clean up unused parts of the JRE to save space
 # RUN rm /usr/lib/jvm/java-1.8-openjdk/jre/lib/ext/nashorn.jar
