@@ -31,17 +31,20 @@ RUN rm -rf /packages && \
 COPY ./remount /usr/bin/remount
 RUN chmod +x /usr/bin/remount
 
+# Script to bring the loopback interface up
+COPY ./loopback /usr/bin/loopback
+RUN chmod +x /usr/bin/loopback
+
 # Copy init.d scripts
 COPY ./init.d/* /etc/init.d/
 RUN chmod +x /etc/init.d/remount
+RUN chmod +x /etc/init.d/loopback
 
 # Setup services
 RUN rc-update add remount default
-
-
-# Enable/disable services to default runlevel
+RUN rc-update add loopback default
 RUN rc-update add networking default
-#TODO
+
 
 # Set hostname
 RUN echo "wasm" > /etc/hostname
