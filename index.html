@@ -24,8 +24,59 @@ window.onload = function()
         autostart: true,
         boot_order: 0x123
     });
+
+    document.getElementById("run").onclick = function()
+    {
+        var code = document.getElementById("source").value;
+        emulator.serial0_send("\nUUID=$(uuidgen)\n");
+        emulator.serial0_send("P_UUID=p${UUID//-/}\n");
+        emulator.serial0_send("mkdir /root/compiler/$P_UUID\n");
+        emulator.serial0_send("echo \"package $P_UUID;\" > /root/compiler/$P_UUID/HelloWorld.java\n");
+        emulator.serial0_send("\ncat <<EOF >> /root/compiler/$P_UUID/HelloWorld.java\n " + code + "\nEOF\n");
+        emulator.serial0_send("/root/compiler/ng ng-cp /root/compiler\n");
+        emulator.serial0_send("/root/compiler/ng RuntimeCompiler /root/compiler/$P_UUID/HelloWorld.java\n");
+        emulator.serial0_send("/root/compiler/ng $P_UUID.HelloWorld\n");
+
+    };
+
+    emulator.add_listener("serial0-output-char", function(char)
+    {
+        if(char === "\r")
+        {
+            return;
+        }
+
+        document.getElementById("terminal").value += char;
+    });
+
+
+    // https://gist.github.com/creationix/2502704
+    // Implement bash string escaping.
+    function bashEscape(arg)
+    {
+        arg = arg.replace(/\t+/g, "");
+        return "'" + arg.replace(/'+/g, function (val) {
+            return "'" + val.replace(/'/g, "\\'") + "'";
+        }) + "'";
+    }
 }
 </script>
+
+<textarea id=source rows=20 cols=80>
+    public class HelloWorld {
+
+        public static void main(String[] args) {
+            // Prints "Hello, World" to the terminal window.
+            System.out.println("Hello, World");
+        }
+      
+      }
+</textarea>
+<button id=run>Compile</button>
+<br>
+
+<textarea readonly rows=25 cols=60 id="terminal"></textarea>
+<br>
 
 <!-- A minimal structure for the ScreenAdapter defined in browser/screen.js -->
 <div id="screen_container">

@@ -1,6 +1,6 @@
 FROM i386/alpine:3.15
 RUN apk update && \
-    apk add openrc mkinitfs
+    apk add openrc mkinitfs util-linux
 
 # Install JDK8
 RUN apk add --no-cache openjdk8 && \
@@ -58,13 +58,14 @@ RUN echo "127.0.0.1  localhost  wasm" > /etc/hosts
 RUN rm /etc/motd && rm /etc/issue
 
 # Enable Getty on ttys0 for webpage interaction
-#TODO
+RUN echo "ttyS0::respawn:/sbin/agetty --autologin root -L ttyS0 115200 vt100" >> /etc/inittab
 
 
 
 # Clean up unused parts of the JRE to save space
 # RUN rm /usr/lib/jvm/java-1.8-openjdk/jre/lib/ext/nashorn.jar
 
-# Copy the JDK nailgun compiler
+# Copy and precompile the JDK nailgun compiler
 RUN mkdir /root/compiler
 COPY ./RuntimeCompiler/* /root/compiler/
+RUN cd /root/compiler && javac RuntimeCompiler.java
