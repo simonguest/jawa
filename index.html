@@ -39,6 +39,58 @@ window.onload = function()
 
     };
 
+    document.getElementById("save_file").onclick = function()
+    {
+        emulator.save_state(function(error, new_state)
+        {
+            if(error)
+            {
+                throw error;
+            }
+
+            var a = document.createElement("a");
+            a.download = "v86state.bin";
+            a.href = window.URL.createObjectURL(new Blob([new_state]));
+            a.dataset.downloadurl = "application/octet-stream:" + a.download + ":" + a.href;
+            a.click();
+        });
+
+        this.blur();
+    };
+
+    document.getElementById("restore_file").onchange = function()
+    {
+        if(this.files.length)
+        {
+            var filereader = new FileReader();
+            emulator.stop();
+
+            filereader.onload = function(e)
+            {
+                emulator.restore_state(e.target.result);
+                emulator.run();
+            };
+
+            filereader.readAsArrayBuffer(this.files[0]);
+
+            this.value = "";
+        }
+
+        this.blur();
+    };
+
+    document.getElementById("pause").onclick = function()
+    {
+        console.log("pause");
+        emulator.stop();
+    }
+
+    document.getElementById("resume").onclick = function()
+    {
+        console.log("run");
+        emulator.run();
+    }
+
     emulator.add_listener("serial0-output-char", function(char)
     {
         if(char === "\r")
@@ -62,6 +114,11 @@ window.onload = function()
 }
 </script>
 
+<button id=save_file>Save State</button>
+<input id="restore_file" type="file">
+<button id=pause>Pause</button>
+<button id=resume>Resume</button>
+<br>
 <textarea id=source rows=20 cols=80>
     public class HelloWorld {
 

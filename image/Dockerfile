@@ -14,6 +14,7 @@ COPY ./packages.tar .
 RUN tar xvf /packages.tar && \
     tar xvf /abuild.tar && \
     cp /.abuild/*.pub /etc/apk/keys && \
+    cp /etc/apk/repositories /etc/apk/repositories.old && \
     echo "/packages/main" > /etc/apk/repositories && \
     apk update && \
     apk add linux-virt && \
