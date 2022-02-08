@@ -5,9 +5,6 @@ cp config-virt.x86 config-lts.x86
 abuild -F checksum
 abuild-keygen -a -i -n
 abuild -FrK
-cd ~/
-tar cvf packages.tar packages
-tar cvf abuild.tar .abuild
-cp packages.tar /source
-cp abuild.tar /source
+cd ~/pagkages
+cp linux-virt*.apk /source/build
 

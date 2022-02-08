@@ -1,15 +1,15 @@
 <!doctype html>
 <title>Jawa POC</title>
 
-<script src="../build/libv86.js"></script>
+<script src="../lib/libv86.js"></script>
 <script>
 "use strict";
 
 window.onload = function()
 {
     var emulator = window.emulator = new V86Starter({
-        wasm_path: "./build/v86.wasm",
-        memory_size: 512 * 1024 * 1024,
+        wasm_path: "./lib/v86.wasm",
+        memory_size: 164 * 1024 * 1024,
         vga_memory_size: 1 * 1024 * 1024,
         screen_container: document.getElementById("screen_container"),
         bios: {
@@ -19,7 +19,7 @@ window.onload = function()
             url: "./bios/vgabios.bin",
         },
         hda: {
-            url: "./image/output/jawa.img",
+            url: "./build/jawa.img",
         },
         autostart: true,
         boot_order: 0x123
