@@ -1,12 +1,30 @@
 <!doctype html>
-<title>Jawa POC</title>
+<title>Java on WebAssembly</title>
 
-<script src="../lib/libv86.js"></script>
+<html>
+<head>
+  <script src="ace/ace.js" type="text/javascript" charset="utf-8"></script>
+  <script src="ace/theme-twilight.js" type="text/javascript" charset="utf-8"></script>
+  <script src="ace/mode-java.js" type="text/javascript" charset="utf-8"></script>
+  <link rel="stylesheet" href="jawa.css" type="text/css" />
+  <script src="../lib/libv86.js"></script>
+</head>
+
 <script>
-"use strict";
+  window.onload = function()
+  {
+    // Setup the editor
+    var editor = ace.edit("editor");
+    var output = ace.edit("output");
+    var editorSession = editor.getSession();
+    var outputSession = output.getSession();
+    editor.setTheme("ace/theme/dracula");
+    editor.setFontSize(18);
+    output.setFontSize(18);
+    output.setReadOnly(true);
+    editorSession.setMode("ace/mode/java");
 
-window.onload = function()
-{
+    // Load the VM
     var emulator = window.emulator = new V86Starter({
         wasm_path: "./lib/v86.wasm",
         memory_size: 164 * 1024 * 1024,
@@ -21,75 +39,32 @@ window.onload = function()
         hda: {
             url: "./build/jawa.img",
         },
-        autostart: true,
+        initial_state: {
+            url: "./build/v86state.bin"
+        },
+        autostart: false,
         boot_order: 0x123
     });
-
-    document.getElementById("run").onclick = function()
+    
+    // Send commands to the VM when play button is clicked
+    document.getElementById("play").onclick = function()
     {
-        var code = document.getElementById("source").value;
+        emulator.run();
+        var code = editor.getValue();
         emulator.serial0_send("\nUUID=$(uuidgen)\n");
         emulator.serial0_send("P_UUID=p${UUID//-/}\n");
         emulator.serial0_send("mkdir /root/compiler/$P_UUID\n");
         emulator.serial0_send("echo \"package $P_UUID;\" > /root/compiler/$P_UUID/HelloWorld.java\n");
         emulator.serial0_send("\ncat <<EOF >> /root/compiler/$P_UUID/HelloWorld.java\n " + code + "\nEOF\n");
         emulator.serial0_send("/root/compiler/ng ng-cp /root/compiler\n");
+        emulator.serial0_send("echo \"COMPILING_SHOWOUTPUT\"\n");
         emulator.serial0_send("/root/compiler/ng RuntimeCompiler /root/compiler/$P_UUID/HelloWorld.java\n");
         emulator.serial0_send("/root/compiler/ng $P_UUID.HelloWorld\n");
-
+        emulator.serial0_send("echo \"COMPLETE_HIDEOUTPUT\"\n");
     };
 
-    document.getElementById("save_file").onclick = function()
-    {
-        emulator.save_state(function(error, new_state)
-        {
-            if(error)
-            {
-                throw error;
-            }
-
-            var a = document.createElement("a");
-            a.download = "v86state.bin";
-            a.href = window.URL.createObjectURL(new Blob([new_state]));
-            a.dataset.downloadurl = "application/octet-stream:" + a.download + ":" + a.href;
-            a.click();
-        });
-
-        this.blur();
-    };
-
-    document.getElementById("restore_file").onchange = function()
-    {
-        if(this.files.length)
-        {
-            var filereader = new FileReader();
-            emulator.stop();
-
-            filereader.onload = function(e)
-            {
-                emulator.restore_state(e.target.result);
-                emulator.run();
-            };
-
-            filereader.readAsArrayBuffer(this.files[0]);
-
-            this.value = "";
-        }
-
-        this.blur();
-    };
-
-    document.getElementById("pause").onclick = function()
-    {
-        console.log("pause");
-        emulator.stop();
-    }
-
-    document.getElementById("resume").onclick = function()
-    {
-        console.log("run");
-        emulator.run();
-    }
+    var readline = "";
+    var show_output = false;
 
     emulator.add_listener("serial0-output-char", function(char)
     {
@@ -97,46 +72,53 @@ window.onload = function()
         {
             return;
         }
+        readline += char;
+        if (char == '\n') {
+          console.log(readline);
+          if (readline.startsWith("COMPLETE_HIDEOUTPUT")){
+            console.log("Stopping output to window");
+            show_output = false;
+            emulator.stop();
+          }
+          if (show_output === true) {
+            if (!readline.startsWith("wasm:~#"))
+            {
+              output.insert(readline);
+            }
+          }
+          if (readline.startsWith("COMPILING_SHOWOUTPUT\n")){
+            console.log("Starting output to window");
+            show_output = true;
+            output.setValue("");
+          }
 
-        document.getElementById("terminal").value += char;
+
+          readline = "";
+        }
     });
-
-
-    // https://gist.github.com/creationix/2502704
-    // Implement bash string escaping.
-    function bashEscape(arg)
-    {
-        arg = arg.replace(/\t+/g, "");
-        return "'" + arg.replace(/'+/g, function (val) {
-            return "'" + val.replace(/'/g, "\\'") + "'";
-        }) + "'";
-    }
-}
+  }
 </script>
 
-<button id=save_file>Save State</button>
-<input id="restore_file" type="file">
-<button id=pause>Pause</button>
-<button id=resume>Resume</button>
-<br>
-<textarea id=source rows=20 cols=80>
-    public class HelloWorld {
-
-        public static void main(String[] args) {
-            // Prints "Hello, World" to the terminal window.
-            System.out.println("Hello, World");
-        }
-      
-      }
-</textarea>
-<button id=run>Compile</button>
-<br>
-
-<textarea readonly rows=25 cols=60 id="terminal"></textarea>
-<br>
-
-<!-- A minimal structure for the ScreenAdapter defined in browser/screen.js -->
-<div id="screen_container">
-    <div style="white-space: pre; font: 14px monospace; line-height: 14px"></div>
-    <canvas style="display: none"></canvas>
+<body>
+  <div id="editor-container">
+  <div id="editor">public class HelloWorld {
+  public static void main(String[] args) {
+      System.out.println("Hello, World!"); 
+  }
+}</div>
 </div>
+    <svg version="1.1" id="play" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" height="100px" width="100px"
+      viewBox="0 0 100 100" enable-background="new 0 0 100 100" xml:space="preserve">
+      <path class="stroke-solid" fill="none" stroke="#ddbe72"  d="M49.9,2.5C23.6,2.8,2.1,24.4,2.5,50.4C2.9,76.5,24.7,98,50.3,97.5c26.4-0.6,47.4-21.8,47.2-47.7
+        C97.3,23.7,75.7,2.3,49.9,2.5"/>
+      <path class="icon" fill="#ddbe72" d="M38,69c-1,0.5-1.8,0-1.8-1.1V32.1c0-1.1,0.8-1.6,1.8-1.1l34,18c1,0.5,1,1.4,0,1.9L38,69z"/>
+    </svg>
+    <div id="output"></div>
+    <!-- A minimal structure for the ScreenAdapter defined in browser/screen.js -->
+<div id="screen_container" style="display: none;">
+  <div style="white-space: pre; font: 14px monospace; line-height: 14px"></div>
+  <canvas style="display: none"></canvas>
+</div>
+  </body>
+
+</html>

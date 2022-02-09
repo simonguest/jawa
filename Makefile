@@ -6,10 +6,6 @@ build:
 	mkdir -p $@
 	touch $@
 
-.PHONY: kernel
-kernel:
-	
-
 .PHONY: base
 base:
 	cp ./kernel/build/*.apk ./build
@@ -25,7 +21,7 @@ jdk:
 	docker build jdk/. -t jawa/jdk:latest
 
 jdk-interactive:
-	docker run -ti jawa/jdk:latest /bin/sh
+	docker run -ti -v `pwd`/jdk:/jdk:rw jawa/jdk:latest /bin/sh
 
 .PHONY: image
 image:
