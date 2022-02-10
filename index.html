@@ -1,1 +1,193 @@
-<h1>gh-pages test</h1>
+<!doctype html>
+<title>Java on WebAssembly</title>
+
+<html>
+<head>
+  <script src="ace/ace.js" type="text/javascript" charset="utf-8"></script>
+  <script src="ace/theme-twilight.js" type="text/javascript" charset="utf-8"></script>
+  <script src="ace/mode-java.js" type="text/javascript" charset="utf-8"></script>
+  <link rel="stylesheet" href="jawa.css" type="text/css" />
+  <script src="../lib/libv86.js"></script>
+</head>
+
+<script>
+  window.onload = function()
+  {
+    // Setup the editor
+    var editor = ace.edit("editor");
+    var output = ace.edit("output");
+    var editorSession = editor.getSession();
+    var outputSession = output.getSession();
+    editor.setTheme("ace/theme/dracula");
+    editor.setFontSize(18);
+    output.setFontSize(18);
+    output.setReadOnly(true);
+    editorSession.setMode("ace/mode/java");
+
+    // disable the play button
+    disablePlayButton();
+
+    // Load the VM
+    var emulator = window.emulator = new V86Starter({
+        wasm_path: "./lib/v86.wasm",
+        memory_size: 164 * 1024 * 1024,
+        vga_memory_size: 1 * 1024 * 1024,
+        screen_container: document.getElementById("screen_container"),
+        bios: {
+            url: "./bios/seabios.bin",
+        },
+        vga_bios: {
+            url: "./bios/vgabios.bin",
+        },
+        hda: {
+            url: "./build/jawa.img",
+        },
+        initial_state: {
+            url: "./build/v86state.bin"
+        },
+        autostart: false,
+        boot_order: 0x123
+    });
+
+    function chr_repeat(chr, count)
+    {
+        var result = "";
+
+        while(count-- > 0)
+        {
+            result += chr;
+        }
+
+        return result;
+    }
+
+    emulator.add_listener("download-progress", function(e)
+    {
+        var line = "Downloading compiler ";
+
+        if(typeof e.file_index === "number" && e.file_count)
+        {
+            line += "[" + (e.file_index + 1) + "/" + e.file_count + "] ";
+        }
+
+        if(e.total && typeof e.loaded === "number")
+        {
+            var per100 = Math.floor(e.loaded / e.total * 100);
+            per100 = Math.min(100, Math.max(0, per100));
+
+            var per50 = Math.floor(per100 / 2);
+
+            line += per100 + "% [";
+            line += chr_repeat("#", per50);
+            line += chr_repeat(" ", 50 - per50) + "]";
+        }
+        else
+        {
+            line += chr_repeat(".", progress_ticks++ % 50);
+        }
+
+        output.setValue("");
+        output.insert(line);
+
+        if ((e.file_index > 1) && (e.file_index +1 == e.file_count) && (e.loaded / e.total) == 1)
+        {
+          // loaded all images
+          output.setValue("");
+          output.insert("Ready. Press play button to run program.");
+          enablePlayButton();
+        }
+    });
+    
+    // Send commands to the VM when play button is clicked
+    document.getElementById("play").onclick = function()
+    {
+        if (!play_enabled) return;
+        disablePlayButton();
+        output.setValue("");
+        output.insert("Starting compiler...");
+        emulator.run();
+        var code = editor.getValue();
+        emulator.serial0_send("\nUUID=$(uuidgen)\n");
+        emulator.serial0_send("P_UUID=p${UUID//-/}\n");
+        emulator.serial0_send("mkdir /root/compiler/$P_UUID\n");
+        emulator.serial0_send("echo \"package $P_UUID;\" > /root/compiler/$P_UUID/HelloWorld.java\n");
+        emulator.serial0_send("\ncat <<EOF >> /root/compiler/$P_UUID/HelloWorld.java\n " + code + "\nEOF\n");
+        emulator.serial0_send("/root/compiler/ng ng-cp /root/compiler\n");
+        emulator.serial0_send("echo \"COMPILING_SHOWOUTPUT\"\n");
+        emulator.serial0_send("/root/compiler/ng RuntimeCompiler /root/compiler/$P_UUID/HelloWorld.java\n");
+        emulator.serial0_send("/root/compiler/ng $P_UUID.HelloWorld\n");
+        emulator.serial0_send("echo \"COMPLETE_HIDEOUTPUT\"\n");
+    };
+
+    var readline = "";
+    var show_output = false;
+    var play_enabled = false;
+
+    function disablePlayButton() {
+      document.getElementById('play').children[0].setAttribute('stroke', '#333333');
+      document.getElementById('play').children[1].setAttribute('fill', '#333333');
+      play_enabled = false;
+    }
+
+    function enablePlayButton() {
+      document.getElementById('play').children[0].setAttribute('stroke', '#ddbe72');
+      document.getElementById('play').children[1].setAttribute('fill', '#ddbe72');
+      play_enabled = true;
+    }
+
+    emulator.add_listener("serial0-output-char", function(char)
+    {
+        if(char === "\r")
+        {
+            return;
+        }
+        readline += char;
+        if (char == '\n') {
+          console.log(readline);
+          if (readline.startsWith("COMPLETE_HIDEOUTPUT")){
+            console.log("Stopping output to window");
+            show_output = false;
+            emulator.stop();
+            enablePlayButton();
+          }
+          if (show_output === true) {
+            if (!readline.startsWith("wasm:~#"))
+            {
+              output.insert(readline);
+            }
+          }
+          if (readline.startsWith("COMPILING_SHOWOUTPUT\n")){
+            console.log("Starting output to window");
+            show_output = true;
+            output.setValue("");
+          }
+
+          readline = "";
+        }
+    });
+  }
+</script>
+
+<body>
+  <div id="editor-container">
+  <div id="editor">public class HelloWorld {
+  public static void main(String[] args) {
+      System.out.println("Hello, World!"); 
+  }
+}</div>
+</div>
+    <svg version="1.1" id="play" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" height="100px" width="100px"
+      viewBox="0 0 100 100" enable-background="new 0 0 100 100" xml:space="preserve">
+      <path class="stroke-solid" fill="none" stroke="#ddbe72"  d="M49.9,2.5C23.6,2.8,2.1,24.4,2.5,50.4C2.9,76.5,24.7,98,50.3,97.5c26.4-0.6,47.4-21.8,47.2-47.7
+        C97.3,23.7,75.7,2.3,49.9,2.5"/>
+      <path class="icon" fill="#ddbe72" d="M38,69c-1,0.5-1.8,0-1.8-1.1V32.1c0-1.1,0.8-1.6,1.8-1.1l34,18c1,0.5,1,1.4,0,1.9L38,69z"/>
+    </svg>
+    <div id="output"></div>
+    <!-- A minimal structure for the ScreenAdapter defined in browser/screen.js -->
+<div id="screen_container" style="display: none;">
+  <div style="white-space: pre; font: 14px monospace; line-height: 14px"></div>
+  <canvas style="display: none"></canvas>
+</div>
+  </body>
+
+</html>
