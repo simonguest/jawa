@@ -24,6 +24,9 @@
     output.setReadOnly(true);
     editorSession.setMode("ace/mode/java");
 
+    // disable the play button
+    disablePlayButton();
+
     // Load the VM
     var emulator = window.emulator = new V86Starter({
         wasm_path: "./lib/v86.wasm",
@@ -45,10 +48,63 @@
         autostart: false,
         boot_order: 0x123
     });
+
+    function chr_repeat(chr, count)
+    {
+        var result = "";
+
+        while(count-- > 0)
+        {
+            result += chr;
+        }
+
+        return result;
+    }
+
+    emulator.add_listener("download-progress", function(e)
+    {
+        var line = "Downloading compiler ";
+
+        if(typeof e.file_index === "number" && e.file_count)
+        {
+            line += "[" + (e.file_index + 1) + "/" + e.file_count + "] ";
+        }
+
+        if(e.total && typeof e.loaded === "number")
+        {
+            var per100 = Math.floor(e.loaded / e.total * 100);
+            per100 = Math.min(100, Math.max(0, per100));
+
+            var per50 = Math.floor(per100 / 2);
+
+            line += per100 + "% [";
+            line += chr_repeat("#", per50);
+            line += chr_repeat(" ", 50 - per50) + "]";
+        }
+        else
+        {
+            line += chr_repeat(".", progress_ticks++ % 50);
+        }
+
+        output.setValue("");
+        output.insert(line);
+
+        if ((e.file_index > 1) && (e.file_index +1 == e.file_count) && (e.loaded / e.total) == 1)
+        {
+          // loaded all images
+          output.setValue("");
+          output.insert("Ready. Press play button to run program.");
+          enablePlayButton();
+        }
+    });
     
     // Send commands to the VM when play button is clicked
     document.getElementById("play").onclick = function()
     {
+        if (!play_enabled) return;
+        disablePlayButton();
+        output.setValue("");
+        output.insert("Starting compiler...");
         emulator.run();
         var code = editor.getValue();
         emulator.serial0_send("\nUUID=$(uuidgen)\n");
@@ -65,6 +121,19 @@
 
     var readline = "";
     var show_output = false;
+    var play_enabled = false;
+
+    function disablePlayButton() {
+      document.getElementById('play').children[0].setAttribute('stroke', '#333333');
+      document.getElementById('play').children[1].setAttribute('fill', '#333333');
+      play_enabled = false;
+    }
+
+    function enablePlayButton() {
+      document.getElementById('play').children[0].setAttribute('stroke', '#ddbe72');
+      document.getElementById('play').children[1].setAttribute('fill', '#ddbe72');
+      play_enabled = true;
+    }
 
     emulator.add_listener("serial0-output-char", function(char)
     {
@@ -79,6 +148,7 @@
             console.log("Stopping output to window");
             show_output = false;
             emulator.stop();
+            enablePlayButton();
           }
           if (show_output === true) {
             if (!readline.startsWith("wasm:~#"))
@@ -91,7 +161,6 @@
             show_output = true;
             output.setValue("");
           }
-
 
           readline = "";
         }
